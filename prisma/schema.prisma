@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String
+  phone Int
+  tickets Ticket[]
+  assignTo Ticket[] @relation("assignTo")
+  }
+
+model Ticket {
+  id Int        @id @default(autoincrement())
+  subject String
+  status Status
+  description String
+  userId Int
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  createdBy User? @relation(fields:[userId],references:[id])
+  assigneeId Int
+  assignTo User? @relation(fields:[assigneeId],references:[id],name:"assignTo")
+}
+
+enum Status {
+  Open
+  InProgress
+  Pending
+  Resolve
+  Cancel
+}
