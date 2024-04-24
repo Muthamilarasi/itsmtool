@@ -20,6 +20,8 @@ model User {
   phone Int
   tickets Ticket[]
   assignTo Ticket[] @relation("assignTo")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
   }
 
 model Ticket {
@@ -27,11 +29,11 @@ model Ticket {
   subject String
   status Status
   description String
-  userId Int
+  userId Int?
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   createdBy User? @relation(fields:[userId],references:[id])
-  assigneeId Int
+  assigneeId Int?
   assignTo User? @relation(fields:[assigneeId],references:[id],name:"assignTo")
 }
 

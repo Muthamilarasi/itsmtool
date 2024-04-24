@@ -1,12 +1,18 @@
 import * as z from "zod";
 
+const stringOrNumber = z
+  .string()
+  .email()
+  .nullish()
+  .or(z.number({ invalid_type_error: "Provide must be a string" }).nullish());
+
 export const ticketCT = z.object({
   subject: z.string({
     invalid_type_error: "Name must be a string"
   }),
-  userId: z.number({
-    invalid_type_error: "Must be a number"
-  }),
+  userId: z.optional(stringOrNumber),
+  assigneeId: z.optional(stringOrNumber),
+
   description: z.string({
     invalid_type_error: "Description must be a string"
   }),
@@ -19,8 +25,7 @@ export const outputTicket = z.object({
   updatedAt: z.date()
 });
 export const Output = z.intersection(ticketCT, outputTicket);
-type Ticket = z.infer<typeof Output>;
-
+type TicketCT = z.infer<typeof Output>;
 export const userCT = z.object({
   email: z.string().email(),
   phone: z.number({
@@ -30,3 +35,14 @@ export const userCT = z.object({
     invalid_type_error: "Name must be a string"
   })
 });
+
+export type Ticket = {
+  subject: string;
+  userId: any;
+  assigneeId: number;
+  description: string;
+  status: string;
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+};

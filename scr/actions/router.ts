@@ -1,5 +1,6 @@
 import express, { Response, Request } from "express";
 import * as z from "zod";
+import * as R from "ramda";
 import {
   getAllTickets,
   getTickets,
@@ -52,7 +53,7 @@ ticketRouter.delete("/api/tickets/:id", async (req: Request, res: Response) => {
       message: `No record with given id ${req.params.id}`,
       erorr: err
     });
-    console.log("err", err.meta);
+    // console.log("err", err);
   }
 });
 
@@ -64,10 +65,19 @@ ticketRouter.post("/api/tickets", async (req: Request, res: Response) => {
       .status(200)
       .json({ message: "Ticket Created Successfully", ticket: ticket });
   } catch (err) {
-    console.log("err::", err);
+    // console.log("err::", err);
     if (err instanceof z.ZodError) {
       res.status(400).json({
         message: "Bad Request",
+        error: err.issues.map(e => ({
+          errorCode: e.path,
+          errorMessage: e.message
+        }))
+      });
+    } else {
+      console.log("errR::::", err);
+      res.status(500).json({
+        message: "Something went to wrong!",
         error: err.issues.map(e => ({
           errorCode: e.code,
           errorMessage: e.message
@@ -79,16 +89,53 @@ ticketRouter.post("/api/tickets", async (req: Request, res: Response) => {
 
 ticketRouter.put("/api/tickets/:id", async (req: Request, res: Response) => {
   try {
-    const ticket = await UpdateTicket(req.body, req.params.id);
-    res
-      .status(200)
-      .json({ message: "Ticket Updated Successfully", ticket: ticket });
+    const validatedInput = ticketCT.parse(req.body);
+    const ticket = await UpdateTicket(validatedInput, req.params.id);
+    if (ticket.isErr == true) {
+      console.log("error:::::", ticket.error);
+      throw ticket.error;
+    }
+    if (ticket.isOk == true) {
+      res
+        .status(200)
+        .json({ message: "Ticket Updated Successfully", ticket: ticket.value });
+    }
+    // res
+    //   .status(200)
+    //   .json({ message: "Ticket Updated Successfully", ticket: ticket });
+    // console.log("ticket:::", ticket);
   } catch (err) {
-    res.status(404).json({
-      message: `No record with given id ${req.params.id}`,
-      error: err
-    });
-    console.log("err::", err);
+    if (err instanceof z.ZodError) {
+      res.status(400).json({
+        message: "Bad Request",
+        error: err.issues.map(e => ({
+          errorCode: e.path,
+          errorMessage: e.message
+        }))
+      });
+    } else if (err instanceof Error) {
+      if (R.includes(`${req.params.id}`, err["message"])) {
+        res.status(404).json({
+          message: `No record with given id ${req.params.id}`,
+          error: err["message"]
+        });
+      } else if (R.includes(`${req.body.assigneeId}`, err["message"])) {
+        res.status(400).json({
+          message: "Invalid assignee!!",
+          error: err["message"]
+        });
+      } else if (R.includes(`${req.body.userId}`, err["message"])) {
+        res.status(400).json({
+          message: "Invalid userid!!",
+          error: err["message"]
+        });
+      }
+    } else {
+      res.status(500).json({
+        message: "Something went to wrong!",
+        error: err
+      });
+    }
   }
 });
 
@@ -101,8 +148,6 @@ ticketRouter.post("/api/users", async (req: Request, res: Response) => {
       user
     });
   } catch (err) {
-    res.status(400).json({ message: "User Already Created", erorr: err });
-    console.log("err::", err);
     if (err instanceof z.ZodError) {
       res.status(400).json({
         message: "Bad Request",
@@ -111,6 +156,13 @@ ticketRouter.post("/api/users", async (req: Request, res: Response) => {
           errorMessage: e.message
         }))
       });
+    } else if (R.includes("User_email_key", err.meta.target)) {
+      res.status(400).json({
+        message: "User Already Created!",
+        error: err
+      });
+    } else {
+      res.status(500).json({ message: "Something went to wrong!", erorr: err });
     }
   }
 });
