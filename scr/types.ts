@@ -25,7 +25,7 @@ export const outputTicket = z.object({
   updatedAt: z.date()
 });
 export const Output = z.intersection(ticketCT, outputTicket);
-type TicketCT = z.infer<typeof Output>;
+export type TicketCT = z.infer<typeof Output>;
 export const userCT = z.object({
   email: z.string().email(),
   phone: z.number({
@@ -35,6 +35,15 @@ export const userCT = z.object({
     invalid_type_error: "Name must be a string"
   })
 });
+export const outputUser = z.object({
+  id: z.number(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+export const UserOutput = z.intersection(userCT, outputUser);
+
+export type User = z.infer<typeof UserOutput>;
 
 export type Ticket = {
   subject: string;
