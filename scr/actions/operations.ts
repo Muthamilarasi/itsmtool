@@ -1,8 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import { Output } from "../types";
+import { Output, TicketCT } from "../types";
 import * as R from "ramda";
 import { Result } from "@badrap/result";
-import { ValidationError, NotFoundError } from "./custom-errors";
+import { ValidationError, NotFoundError, CustomError } from "./custom-errors";
+import { GetUserAndAssignee } from "./utils";
 
 const prisma = new PrismaClient();
 
@@ -61,46 +62,33 @@ export const CreateTicket = async reqObject => {
 };
 
 export const UpdateTicket = async (reqObject, id: number) => {
-  let sendInput = {};
-  if (reqObject.assigneeId) {
-    let getAssignee = await prisma.user.findUnique({
-      where: { email: reqObject.assigneeId }
-    });
-    if (!getAssignee) {
-      return Result.err(
-        new ValidationError(`Assignee does not exist: ${reqObject.assigneeId}`)
-      );
-    } else {
-      sendInput["assigneeId"] = getAssignee.id;
-    }
-  }
-  if (reqObject.userId) {
-    let getUser = await prisma.user.findUnique({
-      where: { email: reqObject.userId }
-    });
-    if (!getUser) {
-      return Result.err(
-        new ValidationError(`User does not exist: ${reqObject.userId}`)
-      );
-    } else {
-      sendInput["userId"] = getUser.id;
-    }
-  }
   let getTicket = await prisma.ticket.findUnique({
     where: { id: Number(id) }
   });
-
   if (!getTicket) {
-    return Result.err(new NotFoundError(`Ticket does not exist: ${id}`));
+    return Result.err(
+      CustomError("TICKET_ID_DOES_NOT_EXIST", `Ticket does not exist: ${id}`)
+    );
   }
-  // console.log("getTicket::", getTicket);
-  // console.log("sendInput", sendInput);
+  const assigneeId = reqObject.assigneeId
+    ? await GetUserAndAssignee(reqObject.assigneeId, "assigneeId")
+    : {};
+  const userId = reqObject.userId
+    ? await GetUserAndAssignee(reqObject.userId, "userId")
+    : {};
 
+  if (assigneeId instanceof Error) {
+    return Result.err(assigneeId);
+  }
+  if (userId instanceof Error) {
+    return Result.err(userId);
+  }
   const updateTicket = await prisma.ticket.update({
     where: { id: Number(id) },
     data: {
       ...R.omit(["assigneeId", "userId"], reqObject),
-      ...sendInput
+      ...assigneeId,
+      ...userId
     }
   });
   return Result.ok(Output.parse(updateTicket));

@@ -53,7 +53,6 @@ ticketRouter.delete("/api/tickets/:id", async (req: Request, res: Response) => {
       message: `No record with given id ${req.params.id}`,
       erorr: err
     });
-    // console.log("err", err);
   }
 });
 
@@ -93,6 +92,42 @@ ticketRouter.put("/api/tickets/:id", async (req: Request, res: Response) => {
     const ticket = await UpdateTicket(validatedInput, req.params.id);
     if (ticket.isErr == true) {
       console.log("error:::::", ticket.error);
+      if (ticket.error instanceof Error) {
+        if (R.includes(`${req.params.id}`, ticket.error["message"])) {
+          return res.status(404).json({
+            message: `No record with given id ${req.params.id}`,
+            error: [
+              {
+                errorCode: [ticket.error["code"]],
+                errorMessage: ticket.error["message"]
+              }
+            ]
+          });
+        } else if (
+          R.includes(`${req.body.assigneeId}`, ticket.error["message"])
+        ) {
+          return res.status(400).json({
+            message: "Bad Request",
+            error: [
+              {
+                errorCode: [ticket.error["code"]],
+                errorMessage: ticket.error["message"]
+              }
+            ]
+          });
+        } else if (R.includes(`${req.body.userId}`, ticket.error["message"])) {
+          return res.status(400).json({
+            message: "Bad Request",
+            error: [
+              {
+                errorCode: [ticket.error["code"]],
+                errorMessage: ticket.error["message"]
+              }
+            ]
+          });
+        }
+        throw ticket.error;
+      }
       throw ticket.error;
     }
     if (ticket.isOk == true) {
@@ -100,10 +135,6 @@ ticketRouter.put("/api/tickets/:id", async (req: Request, res: Response) => {
         .status(200)
         .json({ message: "Ticket Updated Successfully", ticket: ticket.value });
     }
-    // res
-    //   .status(200)
-    //   .json({ message: "Ticket Updated Successfully", ticket: ticket });
-    // console.log("ticket:::", ticket);
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({
@@ -113,27 +144,15 @@ ticketRouter.put("/api/tickets/:id", async (req: Request, res: Response) => {
           errorMessage: e.message
         }))
       });
-    } else if (err instanceof Error) {
-      if (R.includes(`${req.params.id}`, err["message"])) {
-        res.status(404).json({
-          message: `No record with given id ${req.params.id}`,
-          error: err["message"]
-        });
-      } else if (R.includes(`${req.body.assigneeId}`, err["message"])) {
-        res.status(400).json({
-          message: "Invalid assignee!!",
-          error: err["message"]
-        });
-      } else if (R.includes(`${req.body.userId}`, err["message"])) {
-        res.status(400).json({
-          message: "Invalid userid!!",
-          error: err["message"]
-        });
-      }
     } else {
       res.status(500).json({
         message: "Something went to wrong!",
-        error: err
+        error: [
+          {
+            errorCode: ["Unhandled Error"],
+            errorMessage: "Something went to wrong!"
+          }
+        ]
       });
     }
   }

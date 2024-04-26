@@ -10,3 +10,9 @@ export class NotFoundError extends Error {
     this.name = "NotFoundError";
   }
 }
+
+export const CustomError = (code: string, message: string): Error => {
+  const err: any = new Error(message);
+  err.code = code;
+  return err as Error;
+};
